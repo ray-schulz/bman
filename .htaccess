@@ -1,7 +1,2 @@
 Options +ExecCGI
-DirectoryIndex wman.cgi
-#RewriteEngine On
-#RewriteBase /~ray/wman
-#RewriteCond %{REQUEST_FILENAME} !-f  
-#RewriteCond %{REQUEST_FILENAME} !-d  
-#RewriteRule ^(.*)$ wman.cgi?$1 [L,QSA]
+DirectoryIndex bman.cgi
