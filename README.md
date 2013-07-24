@@ -1,4 +1,4 @@
-wman
+bman
 ====
 
-web type man page browser
+bash/cgi man page browser

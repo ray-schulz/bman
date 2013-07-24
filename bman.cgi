@@ -18,7 +18,7 @@ time_start=$(date +%s.%N)
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# https://github.com/ray-schulz/wman
+# https://github.com/ray-schulz/bman
 
 # These commands must be in $PATH:
 #   bc cat find sort uniq
@@ -286,7 +286,7 @@ cat << "EOF"
 
 <hr>
 <table>
-<tr><td width="40%"><a href="https://github.com/ray-schulz/wman">wman</a> - the web manual browser</td>
+<tr><td width="40%"><a href="https://github.com/ray-schulz/bman">bman</a> - the web manual browser</td>
 <td align="center" width="20%"><a href="#top">top</a></td>
 <td align="right" width="40%">Page generated in 
 EOF
