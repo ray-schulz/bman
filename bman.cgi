@@ -155,16 +155,17 @@ function show_section() {
 		
 		echo "<table>"
 		
-		# TODO: Sort this
+		# TODO: Sort this crap
 		i=1
 		for mdir in $manpath ; do
 			for page in $mdir/man$section/*.$section?(*|)@(|.gz|.bz2|.xz) ; do
 				if [ $i -eq 1 ] ; then
 					echo "<tr>"
 				fi
-				page=${page%.$section*}
 				page=${page##*/}
-				echo "<td width=\"25%\"><a href=\"?p=$page&s=$section\">$page</a></td>"
+				# TODO: Generate url encoded links
+				echo "<td width=\"25%\"><a href=\"?p=$page&s=$section\">${page%.$section*}</a><td>"
+				
 				if [ $i -eq 4 ] ; then
 					echo "</tr>"
 					i=0
@@ -183,17 +184,49 @@ function show_section() {
 
 # Search for a page
 function search() {
+	print_header "search"
 	echo "<p>p: ${_QUERY[p]}</p>"
 	echo "<p>q: ${_QUERY[q]}</p>"
 	echo "<p>s: ${_QUERY[s]}</p>"
+	print_footer
 }
 
 # Show a page
 function show_page() {
+	print_header "show page"
 	echo "<p>p: ${_QUERY[p]}</p>"
 	echo "<p>q: ${_QUERY[q]}</p>"
 	echo "<p>s: ${_QUERY[s]}</p>"
 	
+	found=0
+	for mdir in $manpath ; do
+		if [ $found -eq 0 ] ; then
+			if [ -f "$mdir/man${_QUERY[s]}/${_QUERY[p]}" ] ; then
+				found=1
+				echo "<p>page: $mdir/man${_QUERY[s]}/${_QUERY[p]}</p>"
+				page="$mdir/man${_QUERY[s]}/${_QUERY[p]}"
+				ext=${page:$((${#page}-3)):3}
+				
+				declare cat
+				case "$ext" in
+					.gz) cat=zcat ;;
+					bz2) cat=bzcat ;;
+					.xz) cat=xzcat ;;
+					  *) cat=cat ;;
+				esac
+				
+				echo "<p>ext: $ext</p>"
+				echo "<p>$cat $page | groff -T html -mandoc</p>"
+				$cat $page | groff -T html -mandoc
+			fi
+		fi
+	done
+	
+	if [ $found -eq 0 ] ; then
+		echo "<p>Man page not found</p>"
+	fi
+	
+	print_footer	
 }
 
 # Find the local sections
@@ -202,12 +235,15 @@ local_sections
 # Parse QUERY_STRING and figure out what to do
 parse_query
 
+# url decode
+_QUERY[p]=$(url_decode "${_QUERY[p]}")
+_QUERY[q]=$(url_decode "${_QUERY[q]}")
+_QUERY[s]=$(url_decode "${_QUERY[s]}")
+
 declare action
-if [ -n "${_QUERY[q]}" ] && [ -n "${_QUERY[s]}" ] ; then
-	search
-elif [ -n "${_QUERY[p]}" ] && [ -n "${_QUERY[s]}" ] ; then
+if [ -n "${_QUERY[p]}" ] && [ -n "${_QUERY[s]}" ] ; then
 	show_page
-elif [ -n "${_QUERY[q]}" ] || [ -n "${_QUERY[p]}" ] ; then
+elif [ -n "${_QUERY[q]}" ] ; then
 	search
 elif [ -n "${_QUERY[s]}" ] ; then
 	show_section
