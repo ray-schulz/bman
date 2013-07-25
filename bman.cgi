@@ -164,7 +164,7 @@ function show_section() {
 				fi
 				page=${page##*/}
 				# TODO: Generate url encoded links
-				echo "<td width=\"25%\"><a href=\"?p=$page&s=$section\">${page%.$section*}</a><td>"
+				echo "<td width=\"25%\"><a href=\"?p=$page>${page%.$section*}</a><td>"
 				
 				if [ $i -eq 4 ] ; then
 					echo "</tr>"
@@ -193,37 +193,54 @@ function search() {
 
 # Show a page
 function show_page() {
-	print_header "show page"
-	echo "<p>p: ${_QUERY[p]}</p>"
-	echo "<p>q: ${_QUERY[q]}</p>"
-	echo "<p>s: ${_QUERY[s]}</p>"
+	#echo "<p>p: ${_QUERY[p]}</p>"
+	#echo "<p>q: ${_QUERY[q]}</p>"
+	#echo "<p>s: ${_QUERY[s]}</p>"
+	
+	# Funny looking stuff to parse $_QUERY[p]
+	page=${_QUERY[p]}
+	ext=${page##*.}
+	temp=${page#*.}
+	section=${temp%.*}
+	temp=${page%.*}
+	name=${temp%.*}
+	
+	print_header "$name($section)"
+	
+	#echo "<p>page: $page</p>"
+	#echo "<p>ext: $ext</p>"
+	#echo "<p>temp: $temp</p>"
+	#echo "<p>section: $section</p>"
+	
 	
 	found=0
 	for mdir in $manpath ; do
 		if [ $found -eq 0 ] ; then
-			if [ -f "$mdir/man${_QUERY[s]}/${_QUERY[p]}" ] ; then
+			if [ -f "$mdir/man$section/$page" ] ; then
 				found=1
-				echo "<p>page: $mdir/man${_QUERY[s]}/${_QUERY[p]}</p>"
-				page="$mdir/man${_QUERY[s]}/${_QUERY[p]}"
-				ext=${page:$((${#page}-3)):3}
+				#echo "<p>page: $mdir/man$section/$page</p>"
+				page="$mdir/man$section/$page"
+				ext=${page##*.}
+				temp=${page#*.}
+				section={$temp%.*}
 				
 				declare cat
 				case "$ext" in
-					.gz) cat=zcat ;;
+					 gz) cat=zcat ;;
 					bz2) cat=bzcat ;;
-					.xz) cat=xzcat ;;
+					 xz) cat=xzcat ;;
 					  *) cat=cat ;;
 				esac
 				
-				echo "<p>ext: $ext</p>"
-				echo "<p>$cat $page | groff -T html -mandoc</p>"
+				#echo "<p>ext: $ext</p>"
+				#echo "<p>$cat $page | groff -T html -mandoc</p>"
 				$cat $page | groff -T html -mandoc
 			fi
 		fi
 	done
 	
 	if [ $found -eq 0 ] ; then
-		echo "<p>Man page not found</p>"
+		echo "<p>$page not found</p>"
 	fi
 	
 	print_footer	
@@ -241,7 +258,7 @@ _QUERY[q]=$(url_decode "${_QUERY[q]}")
 _QUERY[s]=$(url_decode "${_QUERY[s]}")
 
 declare action
-if [ -n "${_QUERY[p]}" ] && [ -n "${_QUERY[s]}" ] ; then
+if [ -n "${_QUERY[p]}" ] ; then
 	show_page
 elif [ -n "${_QUERY[q]}" ] ; then
 	search
