@@ -78,6 +78,8 @@ EOF
 body { font-family: monospace; }
 table { width: 100%; }
 td { vertical-align: middle; }
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
 </style>
 </head>
 <body id="top">
@@ -91,7 +93,7 @@ EOF
 		echo -n "<a href=\"?s=$s\">$s</a> "
 	done
 	
-	echo "</td><td align=\"center\" width=\"40%\"><strong>$1</strong></td>"
+	echo "</td><td align=\"center\" width=\"40%\"><h2 style=\"margin: 0;padding:0\">$1</h2></td>"
 	
 cat << "EOF"
 <td align="right" width="30%">
@@ -164,7 +166,7 @@ function show_section() {
 				fi
 				page=${page##*/}
 				# TODO: Generate url encoded links
-				echo "<td width=\"25%\"><a href=\"?p=$page>${page%.$section*}</a><td>"
+				echo "<td width=\"25%\"><a href=\"?p=$page\">${page%.$section*}</a><td>"
 				
 				if [ $i -eq 4 ] ; then
 					echo "</tr>"
@@ -184,19 +186,52 @@ function show_section() {
 
 # Search for a page
 function search() {
-	print_header "search"
-	echo "<p>p: ${_QUERY[p]}</p>"
-	echo "<p>q: ${_QUERY[q]}</p>"
-	echo "<p>s: ${_QUERY[s]}</p>"
+	declare title
+	
+	if [ -n "${_QUERY[s]}" ] ; then
+		section=${_QUERY[s]}
+		title="Manual search for ${_QUERY[q]} in section ${_QUERY[s]}"
+	else
+		section="?"
+		title="Manual search for ${_QUERY[q]}"
+	fi
+	
+	print_header "$title"
+	
+	i=1
+	echo "<table>"
+	for mdir in $manpath ; do
+	#*.$section?(*|)@(|.gz|.bz2|.xz)
+		for page in $mdir/man$section/*${_QUERY[q]}*.$section?(*|)@(|.gz|.bz2|.xz) ; do
+			if [ $i -eq 1 ] ; then
+				echo "<tr>"
+			fi
+			page=${page##*/}
+			ext=${page##*.}
+			temp=${page#*.}
+			section=${temp%.*}
+			temp=${page%.*}
+			name=${temp%.*}
+			
+			echo "<td width=\"25%\"><a href=\"?p=$page\">$name($section)</a></td>"
+			if [ $i -eq 4 ] ; then
+				echo "</tr>"
+				i=0
+			fi
+			let i=$i+1
+			
+		done
+	done
+	if [ $i -eq 2 ] || [ $i -eq 3 ] || [ $i -eq 4 ] ; then
+		echo "</tr>"
+	fi
+	echo "</table>"
+		
 	print_footer
 }
 
 # Show a page
 function show_page() {
-	#echo "<p>p: ${_QUERY[p]}</p>"
-	#echo "<p>q: ${_QUERY[q]}</p>"
-	#echo "<p>s: ${_QUERY[s]}</p>"
-	
 	# Funny looking stuff to parse $_QUERY[p]
 	page=${_QUERY[p]}
 	ext=${page##*.}
@@ -207,19 +242,13 @@ function show_page() {
 	
 	print_header "$name($section)"
 	
-	#echo "<p>page: $page</p>"
-	#echo "<p>ext: $ext</p>"
-	#echo "<p>temp: $temp</p>"
-	#echo "<p>section: $section</p>"
-	
-	
 	found=0
 	for mdir in $manpath ; do
 		if [ $found -eq 0 ] ; then
-			if [ -f "$mdir/man$section/$page" ] ; then
+			if [ -f "$mdir/man${section:0:1}/$page" ] ; then
 				found=1
-				#echo "<p>page: $mdir/man$section/$page</p>"
-				page="$mdir/man$section/$page"
+				
+				page="$mdir/man${section:0:1}/$page"
 				ext=${page##*.}
 				temp=${page#*.}
 				section={$temp%.*}
@@ -232,9 +261,27 @@ function show_page() {
 					  *) cat=cat ;;
 				esac
 				
-				#echo "<p>ext: $ext</p>"
-				#echo "<p>$cat $page | groff -T html -mandoc</p>"
-				$cat $page | groff -T html -mandoc
+				mark=0
+				div=0
+				$cat $page | groff -T html -mandoc | while read line ; do
+					if [ $mark -eq 0 ] && [ "${line%%>*}" = "<h1 align=\"center\"" ] ; then
+						echo "<div style=\"float: right;text-align: right;width: 11%\">"
+						mark=1
+					elif [ $mark -eq 1 ] && [ "$line" = "<hr>" ] ; then
+						echo "</div>"
+						echo "<div style=\"margin-right: 11%\">"
+						mark=2
+						div=1
+					elif [ $mark -eq 2 ] && [ "$line" = "<hr>" ] ; then
+						mark=3
+					elif [ $mark -eq 1 ] || [ $mark -eq 2 ] ; then
+						if [ "$line" = "</h2>" ] ; then
+							line="<small><a href=\"#top\">top</a></small></h2>"
+						fi
+						echo "$line"
+					fi
+				done
+				echo "</div>"
 			fi
 		fi
 	done
