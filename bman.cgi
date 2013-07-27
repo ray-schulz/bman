@@ -52,7 +52,7 @@ sections[x]="The X Window System"
 # Go through all $manpath/$section directories to see if they exist
 # Only sections with existing directories will be shown
 declare -A localsections
-function local_sections() {
+function local_sections {
 	for d in $manpath ; do
 		for s in "${!sections[@]}" ; do
 			if [ -d "$d/man$s" ] ; then
@@ -63,7 +63,7 @@ function local_sections() {
 }
 
 # Print the header
-function print_header() {
+function print_header {
 	cat << "EOF"
 Content-type:  text/html
 
@@ -119,7 +119,7 @@ EOF
 }
 
 # Print the footer
-function print_footer() {
+function print_footer {
 	cat << "EOF"
 <hr>
 <table>
@@ -138,7 +138,7 @@ EOF
 }
 
 # List the available sections
-function list_sections() {
+function list_sections {
 	print_header "Manual Sections"
 	
 	for s in "${!localsections[@]}" ; do
@@ -149,7 +149,7 @@ function list_sections() {
 }
 
 
-function show_section() {
+function show_section {
 	section="${_QUERY[s]}"
 	
 	if [ -n "${localsections[$section]}" ] ; then
@@ -165,8 +165,9 @@ function show_section() {
 					echo "<tr>"
 				fi
 				page=${page##*/}
+				page=${page%.$section*}
 				# TODO: Generate url encoded links
-				echo "<td width=\"25%\"><a href=\"?p=$page\">${page%.$section*}</a><td>"
+				echo "<td width=\"25%\"><a href=\"?p=$page&s=$section\">$page</a><td>"
 				
 				if [ $i -eq 4 ] ; then
 					echo "</tr>"
@@ -185,7 +186,7 @@ function show_section() {
 }
 
 # Search for a page
-function search() {
+function search {
 	declare title
 	
 	if [ -n "${_QUERY[s]}" ] ; then
@@ -213,7 +214,7 @@ function search() {
 			temp=${page%.*}
 			name=${temp%.*}
 			
-			echo "<td width=\"25%\"><a href=\"?p=$page\">$name($section)</a></td>"
+			echo "<td width=\"25%\"><a href=\"?p=$name&s=$section\">$name($section)</a></td>"
 			if [ $i -eq 4 ] ; then
 				echo "</tr>"
 				i=0
@@ -231,66 +232,66 @@ function search() {
 }
 
 # Show a page
-function show_page() {
-	# Funny looking stuff to parse $_QUERY[p]
-	page=${_QUERY[p]}
-	ext=${page##*.}
-	temp=${page#*.}
-	section=${temp%.*}
-	temp=${page%.*}
-	name=${temp%.*}
-	
-	print_header "$name($section)"
-	
-	found=0
-	for mdir in $manpath ; do
-		if [ $found -eq 0 ] ; then
-			if [ -f "$mdir/man${section:0:1}/$page" ] ; then
-				found=1
-				
-				page="$mdir/man${section:0:1}/$page"
-				ext=${page##*.}
-				temp=${page#*.}
-				section={$temp%.*}
-				
-				declare cat
-				case "$ext" in
-					 gz) cat=zcat ;;
-					bz2) cat=bzcat ;;
-					 xz) cat=xzcat ;;
-					  *) cat=cat ;;
-				esac
-				
-				mark=0
-				div=0
-				$cat $page | groff -T html -mandoc | while read line ; do
-					if [ $mark -eq 0 ] && [ "${line%%>*}" = "<h1 align=\"center\"" ] ; then
-						echo "<div style=\"float: right;text-align: right;width: 11%\">"
-						mark=1
-					elif [ $mark -eq 1 ] && [ "$line" = "<hr>" ] ; then
-						echo "</div>"
-						echo "<div style=\"margin-right: 11%\">"
-						mark=2
-						div=1
-					elif [ $mark -eq 2 ] && [ "$line" = "<hr>" ] ; then
-						mark=3
-					elif [ $mark -eq 1 ] || [ $mark -eq 2 ] ; then
-						if [ "$line" = "</h2>" ] ; then
-							line="<small><a href=\"#top\">top</a></small></h2>"
-						fi
-						echo "$line"
+function show_page {
+	print_header "${_QUERY[p]}(${_QUERY[s]})"
+	if [ -n "${_QUERY[p]}" ] && [ -n "${_QUERY[s]}" ] ; then
+		mfile=
+		# Find the full path
+		for mdir in $manpath ; do
+			for mpage in $mdir/man${_QUERY[s]}/${_QUERY[p]}.${_QUERY[s]}* ; do
+				if [ -f "$mpage" ] ; then
+					mfile=$mpage
+					break
+				fi
+			done
+			if [ -f "$mfile" ] ; then break ; fi
+		done
+		
+		if [ -f "$mfile" ] ; then
+			ext=${mfile##*.}
+			cat=
+			case "$ext" in
+				gz)		cat=zcat	;;
+				bz2)	cat=bzcat	;;
+				xz)		cat=xzcat	;;
+				*)		cat=cat		;;
+			esac
+			
+			# Now we can display the page
+			# This is kinda hackish and takes awhile because it uses groff to
+			# convert a man page to html, then we parse it line by line, fixing
+			# it up to look properly for us
+			mark=0
+			$cat $mfile | groff -T html -mandoc | while read line ; do
+				if [ $mark -eq 0 ] && [ "${line%%>*}" = "<h1 align=\"center\"" ] ; then
+					echo "<div style=\"float: right;text-align: right;width: 11%\">"
+					mark=1
+				elif [ $mark -eq 1 ] && [ "$line" = "<hr>" ] ; then
+					echo "</div>"
+					echo "<div style=\"margin-right: 11%\">"
+					mark=2
+				elif [ $mark -eq 2 ] && [ "$line" = "<hr>" ] ; then
+					mark=3
+				elif [ $mark -eq 1 ] ; then
+					echo "<p style=\"margin: .5em 0\">${line/<br>/</p>}"
+				elif [ $mark -eq 2 ] ; then
+					if [ "$line" = "</h2>" ] ; then
+						line="<small><a href=\"#top\">top</a></small></h2>"
 					fi
-				done
-				echo "</div>"
-			fi
+					echo "$line"
+				fi
+			done
+			echo "</div>"
+			
+			
+		else
+			echo "<p>${_QUERY[p]}(${_QUERY[s]}) not found</p>"
 		fi
-	done
-	
-	if [ $found -eq 0 ] ; then
-		echo "<p>$page not found</p>"
+	else
+		echo "<p>page and section must both be specified</p>"
 	fi
 	
-	print_footer	
+	print_footer
 }
 
 # Find the local sections
