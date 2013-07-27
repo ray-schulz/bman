@@ -23,6 +23,7 @@ time_start=$(date +%s.%N)
 # Important for globbing later on
 shopt -s extglob
 shopt -s nullglob
+shopt -s nocaseglob
 
 # cgi.sh is required https://github.com/ray-schulz/cgi.sh
 . cgi.sh
@@ -201,8 +202,8 @@ function search {
 	
 	i=1
 	echo "<table>"
+	
 	for mdir in $manpath ; do
-	#*.$section?(*|)@(|.gz|.bz2|.xz)
 		for page in $mdir/man$section/*${_QUERY[q]}*.$section?(*|)@(|.gz|.bz2|.xz) ; do
 			if [ $i -eq 1 ] ; then
 				echo "<tr>"
