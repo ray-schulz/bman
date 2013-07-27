@@ -263,27 +263,32 @@ function show_page {
 			# it up to look properly for us
 			mark=0
 			$cat $mfile | groff -T html -mandoc | while read line ; do
-				if [ $mark -eq 0 ] && [ "${line%%>*}" = "<h1 align=\"center\"" ] ; then
-					echo "<div style=\"float: right;text-align: right;width: 11%\">"
-					mark=1
-				elif [ $mark -eq 1 ] && [ "$line" = "<hr>" ] ; then
-					echo "</div>"
-					echo "<div style=\"margin-right: 11%\">"
-					mark=2
-				elif [ $mark -eq 2 ] && [ "$line" = "<hr>" ] ; then
-					mark=3
-				elif [ $mark -eq 1 ] ; then
-					echo "<p style=\"margin: .5em 0\">${line/<br>/</p>}"
-				elif [ $mark -eq 2 ] ; then
-					if [ "$line" = "</h2>" ] ; then
-						line="<small><a href=\"#top\">top</a></small></h2>"
-					fi
-					echo "$line"
-				fi
+				case "$mark" in
+					0)	if [ "${line%%>*}" = "<h1 align=\"center\"" ] ; then
+							echo "<div style=\"float: right;text-align: right;width: 11%\">"
+							mark=1
+						fi
+						;;
+					1)	if [ "$line" = "<hr>" ] ; then
+							echo "</div>"
+							echo "<div style=\"margin-right: 11%\">"
+							mark=2
+						else
+							echo "<p style=\"margin: .5em 0\">${line/<br>/</p>}"
+						fi
+						;;
+					2)	if [ "$line" = "<hr>" ] ; then
+							mark=3
+						elif [ "$line" = "</h2>" ] ; then
+							line="<small><a href=\"#top\">top</a></small></h2>"
+							echo "$line"
+						else
+							echo "$line"
+						fi
+						;;
+				esac
 			done
 			echo "</div>"
-			
-			
 		else
 			echo "<p>${_QUERY[p]}(${_QUERY[s]}) not found</p>"
 		fi
